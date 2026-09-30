@@ -1,40 +1,42 @@
-import 'dotenv/config';
 import express from 'express';
 import mongoose from 'mongoose';
-import Resume from './models/Resume.js'; // Note the .js extension
+import cors from 'cors';
+import dotenv from 'dotenv';
+import Resume from './models/Resume.js'; // Adjust path to your model
+
+dotenv.config();
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log(' Connected to MongoDB successfully!'))
-  .catch((err) => console.error(' MongoDB Connection Error:', err));
+// Track connection state across serverless invocations
+let isConnected = false;
 
-// Route to save a resume
-app.post('/api/resumes', async (req, res) => {
+const connectDB = async () => {
+  if (isConnected && mongoose.connection.readyState === 1) return;
+  
   try {
-    const newResume = new Resume(req.body);
-    const savedResume = await newResume.save();
-    res.status(201).json(savedResume);
+    const db = await mongoose.connect(process.env.MONGO_URI, {
+      bufferCommands: false, // Prevents queries from hanging when disconnected
+      serverSelectionTimeoutMS: 5000,
+    });
+    isConnected = db.connections[0].readyState === 1;
+    console.log("MongoDB Connected Successfully");
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("MongoDB Connection Error:", error);
+    throw error;
   }
-});
+};
 
-// Route to view all resumes
 app.get('/api/resumes', async (req, res) => {
   try {
+    await connectDB();
     const resumes = await Resume.find();
     res.json(resumes);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
 });
 
 export default app;
