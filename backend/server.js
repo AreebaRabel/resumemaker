@@ -2,7 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import Resume from './models/Resume.js'; // Adjust path to your model
+import Resume from './models/Resume.js'; // Adjust path to your model if needed
 
 dotenv.config();
 
@@ -10,21 +10,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Track connection state across serverless invocations
+// Track connection status
 let isConnected = false;
 
 const connectDB = async () => {
-  if (isConnected && mongoose.connection.readyState === 1) return;
-  
+  if (isConnected && mongoose.connection.readyState === 1) {
+    return;
+  }
+
   try {
     const db = await mongoose.connect(process.env.MONGO_URI, {
-      bufferCommands: false, // Prevents queries from hanging when disconnected
-      serverSelectionTimeoutMS: 5000,
+      bufferCommands: false, // Stop Mongoose from queueing queries when disconnected
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s
     });
     isConnected = db.connections[0].readyState === 1;
-    console.log("MongoDB Connected Successfully");
+    console.log("MongoDB connected successfully");
   } catch (error) {
-    console.error("MongoDB Connection Error:", error);
+    console.error("MongoDB connection error:", error);
     throw error;
   }
 };
